@@ -1262,6 +1262,15 @@ print: (t: meta::type_declaration) =
     std::cout << t.print() << "\n";
 }
 
+//-----------------------------------------------------------------------
+//
+//  maker - add a make_<class name> function
+//
+maker: (inout t: meta::type_declaration) =
+{
+    t.add_declaration("make_(t.name())$: (args...: _) -> _ = { return (t.name())$(args...); }");
+}
+
 
 //-----------------------------------------------------------------------
 //
@@ -1346,6 +1355,9 @@ apply_metafunctions: (
         }
         else if name == "print" {
             print( rtype );
+        }
+        else if name == "maker" {
+            maker( rtype );
         }
         else {
             error( "unrecognized metafunction name: " + name );

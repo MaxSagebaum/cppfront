@@ -38,7 +38,7 @@ class alias_declaration;
 #line 884 "reflect.h2"
 class value_member_info;
 
-#line 1370 "reflect.h2"
+#line 1382 "reflect.h2"
 }
 
 }
@@ -724,7 +724,14 @@ auto cpp2_union(meta::type_declaration& t) -> void;
 //
 auto print(cpp2::in<meta::type_declaration> t) -> void;
 
-#line 1266 "reflect.h2"
+#line 1265 "reflect.h2"
+//-----------------------------------------------------------------------
+//
+//  maker - add a make_<class name> function
+//
+auto maker(meta::type_declaration& t) -> void;
+
+#line 1275 "reflect.h2"
 //-----------------------------------------------------------------------
 //
 //  apply_metafunctions
@@ -735,7 +742,7 @@ auto print(cpp2::in<meta::type_declaration> t) -> void;
     auto const& error
     ) -> bool;
 
-#line 1370 "reflect.h2"
+#line 1382 "reflect.h2"
 }
 
 }
@@ -1771,7 +1778,13 @@ auto print(cpp2::in<meta::type_declaration> t) -> void
     std::cout << CPP2_UFCS_0(print, t) << "\n";
 }
 
-#line 1270 "reflect.h2"
+#line 1269 "reflect.h2"
+auto maker(meta::type_declaration& t) -> void
+{
+    CPP2_UFCS(add_declaration, t, "make_" + cpp2::to_string(CPP2_UFCS_0(name, t)) + ": (args...: _) -> _ = { return " + cpp2::to_string(CPP2_UFCS_0(name, t)) + "(args...); }");
+}
+
+#line 1279 "reflect.h2"
 [[nodiscard]] auto apply_metafunctions(
     declaration_node& n, 
     type_declaration& rtype, 
@@ -1852,11 +1865,14 @@ auto print(cpp2::in<meta::type_declaration> t) -> void
         else {if (name == "print") {
             print(rtype);
         }
+        else {if (name == "maker") {
+            maker(rtype);
+        }
         else {
             error("unrecognized metafunction name: " + name);
             error("(temporary alpha limitation) currently the supported names are: interface, polymorphic_base, ordered, weakly_ordered, partially_ordered, copyable, basic_value, value, weakly_ordered_value, partially_ordered_value, struct, enum, flag_enum, union, print");
             return false; 
-        }}}}}}}}}}}}}}}
+        }}}}}}}}}}}}}}}}
 
         if ((
             !(CPP2_UFCS_0(empty, args)) 
@@ -1871,7 +1887,7 @@ auto print(cpp2::in<meta::type_declaration> t) -> void
     return true; 
 }
 
-#line 1370 "reflect.h2"
+#line 1382 "reflect.h2"
 }
 
 }
