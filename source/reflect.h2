@@ -1271,6 +1271,20 @@ maker: (inout t: meta::type_declaration) =
     t.add_declaration("make_(t.name())$: (args...: _) -> _ = { return (t.name())$(args...); }");
 }
 
+//-----------------------------------------------------------------------
+//
+//  generate_expressions - adds expression syntax
+//
+generate_binary_expression: (inout t: meta::type_declaration) =
+{
+
+    op_name: std::string = t.name().substr(8); // Skip 'Operator'
+
+    t.add_declaration("(op_name)$: <A, B> (arg_a: Expression<A>, arg_b: Expression<B>) -> _ = BinaryExpression<A, B, (t.name())$>(arg_a, arg_b);");
+    t.add_declaration("(op_name)$: <A> (arg_a: Expression<A>, arg_b: double) -> _ = BinaryExpression<A, Constant<double>, (t.name())$>(arg_a, Constant<double>(arg_b));");
+    t.add_declaration("(op_name)$: <B> (arg_a: double, arg_b: Expression<B>) -> _ = BinaryExpression<Constant<double>, B, (t.name())$>(Constant<double>(arg_a), arg_b);");
+}
+
 
 //-----------------------------------------------------------------------
 //
@@ -1358,6 +1372,9 @@ apply_metafunctions: (
         }
         else if name == "maker" {
             maker( rtype );
+        }
+        else if name == "generate_binary_expression" {
+            generate_binary_expression( rtype );
         }
         else {
             error( "unrecognized metafunction name: " + name );

@@ -38,7 +38,7 @@ class alias_declaration;
 #line 884 "reflect.h2"
 class value_member_info;
 
-#line 1382 "reflect.h2"
+#line 1399 "reflect.h2"
 }
 
 }
@@ -731,7 +731,14 @@ auto print(cpp2::in<meta::type_declaration> t) -> void;
 //
 auto maker(meta::type_declaration& t) -> void;
 
-#line 1275 "reflect.h2"
+#line 1274 "reflect.h2"
+//-----------------------------------------------------------------------
+//
+//  generate_expressions - adds expression syntax
+//
+auto generate_binary_expression(meta::type_declaration& t) -> void;
+
+#line 1289 "reflect.h2"
 //-----------------------------------------------------------------------
 //
 //  apply_metafunctions
@@ -742,7 +749,7 @@ auto maker(meta::type_declaration& t) -> void;
     auto const& error
     ) -> bool;
 
-#line 1382 "reflect.h2"
+#line 1399 "reflect.h2"
 }
 
 }
@@ -1784,7 +1791,18 @@ auto maker(meta::type_declaration& t) -> void
     CPP2_UFCS(add_declaration, t, "make_" + cpp2::to_string(CPP2_UFCS_0(name, t)) + ": (args...: _) -> _ = { return " + cpp2::to_string(CPP2_UFCS_0(name, t)) + "(args...); }");
 }
 
-#line 1279 "reflect.h2"
+#line 1278 "reflect.h2"
+auto generate_binary_expression(meta::type_declaration& t) -> void
+{
+
+    std::string op_name {CPP2_UFCS(substr, CPP2_UFCS_0(name, t), 8)}; // Skip 'Operator'
+
+    CPP2_UFCS(add_declaration, t, cpp2::to_string(op_name) + ": <A, B> (arg_a: Expression<A>, arg_b: Expression<B>) -> _ = BinaryExpression<A, B, " + cpp2::to_string(CPP2_UFCS_0(name, t)) + ">(arg_a, arg_b);");
+    CPP2_UFCS(add_declaration, t, cpp2::to_string(op_name) + ": <A> (arg_a: Expression<A>, arg_b: double) -> _ = BinaryExpression<A, Constant<double>, " + cpp2::to_string(CPP2_UFCS_0(name, t)) + ">(arg_a, Constant<double>(arg_b));");
+    CPP2_UFCS(add_declaration, t, cpp2::to_string(std::move(op_name)) + ": <B> (arg_a: double, arg_b: Expression<B>) -> _ = BinaryExpression<Constant<double>, B, " + cpp2::to_string(CPP2_UFCS_0(name, t)) + ">(Constant<double>(arg_a), arg_b);");
+}
+
+#line 1293 "reflect.h2"
 [[nodiscard]] auto apply_metafunctions(
     declaration_node& n, 
     type_declaration& rtype, 
@@ -1868,11 +1886,14 @@ auto maker(meta::type_declaration& t) -> void
         else {if (name == "maker") {
             maker(rtype);
         }
+        else {if (name == "generate_binary_expression") {
+            generate_binary_expression(rtype);
+        }
         else {
             error("unrecognized metafunction name: " + name);
             error("(temporary alpha limitation) currently the supported names are: interface, polymorphic_base, ordered, weakly_ordered, partially_ordered, copyable, basic_value, value, weakly_ordered_value, partially_ordered_value, struct, enum, flag_enum, union, print");
             return false; 
-        }}}}}}}}}}}}}}}}
+        }}}}}}}}}}}}}}}}}
 
         if ((
             !(CPP2_UFCS_0(empty, args)) 
@@ -1887,7 +1908,7 @@ auto maker(meta::type_declaration& t) -> void
     return true; 
 }
 
-#line 1382 "reflect.h2"
+#line 1399 "reflect.h2"
 }
 
 }
