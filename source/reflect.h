@@ -429,7 +429,7 @@ class type_declaration
     
 
 #line 528 "reflect.h2"
-    public: auto add_declaration(cpp2::in<std::string_view> source) & -> void;
+    public: auto add_declaration_to_parent_namespace(cpp2::in<std::string_view> source) & -> void;
     
 
 #line 535 "reflect.h2"
@@ -1213,7 +1213,7 @@ declaration::declaration(declaration const& that)
         }
     }
 
-    auto type_declaration::add_declaration(cpp2::in<std::string_view> source) & -> void
+    auto type_declaration::add_declaration_to_parent_namespace(cpp2::in<std::string_view> source) & -> void
     {
         if (!(parse_and_add_declaration(source))) {
             error(std::string("error attempting to add declaration:\n") + source);
@@ -1788,7 +1788,7 @@ auto print(cpp2::in<meta::type_declaration> t) -> void
 #line 1269 "reflect.h2"
 auto maker(meta::type_declaration& t) -> void
 {
-    CPP2_UFCS(add_declaration, t, "make_" + cpp2::to_string(CPP2_UFCS_0(name, t)) + ": (args...: _) -> _ = { return " + cpp2::to_string(CPP2_UFCS_0(name, t)) + "(args...); }");
+    CPP2_UFCS(add_declaration_to_parent_namespace, t, "make_" + cpp2::to_string(CPP2_UFCS_0(name, t)) + ": (args...: _) -> _ = { return " + cpp2::to_string(CPP2_UFCS_0(name, t)) + "(args...); }");
 }
 
 #line 1278 "reflect.h2"
@@ -1797,9 +1797,9 @@ auto generate_binary_expression(meta::type_declaration& t) -> void
 
     std::string op_name {CPP2_UFCS(substr, CPP2_UFCS_0(name, t), 8)}; // Skip 'Operator'
 
-    CPP2_UFCS(add_declaration, t, cpp2::to_string(op_name) + ": <A, B> (arg_a: Expression<A>, arg_b: Expression<B>) -> _ = BinaryExpression<A, B, " + cpp2::to_string(CPP2_UFCS_0(name, t)) + ">(arg_a, arg_b);");
-    CPP2_UFCS(add_declaration, t, cpp2::to_string(op_name) + ": <A> (arg_a: Expression<A>, arg_b: double) -> _ = BinaryExpression<A, Constant<double>, " + cpp2::to_string(CPP2_UFCS_0(name, t)) + ">(arg_a, Constant<double>(arg_b));");
-    CPP2_UFCS(add_declaration, t, cpp2::to_string(std::move(op_name)) + ": <B> (arg_a: double, arg_b: Expression<B>) -> _ = BinaryExpression<Constant<double>, B, " + cpp2::to_string(CPP2_UFCS_0(name, t)) + ">(Constant<double>(arg_a), arg_b);");
+    CPP2_UFCS(add_declaration_to_parent_namespace, t, cpp2::to_string(op_name) + ": <A, B> (arg_a: Expression<A>, arg_b: Expression<B>) -> _ = BinaryExpression<A, B, " + cpp2::to_string(CPP2_UFCS_0(name, t)) + ">(arg_a, arg_b);");
+    CPP2_UFCS(add_declaration_to_parent_namespace, t, cpp2::to_string(op_name) + ": <A> (arg_a: Expression<A>, arg_b: double) -> _ = BinaryExpression<A, Constant<double>, " + cpp2::to_string(CPP2_UFCS_0(name, t)) + ">(arg_a, Constant<double>(arg_b));");
+    CPP2_UFCS(add_declaration_to_parent_namespace, t, cpp2::to_string(std::move(op_name)) + ": <B> (arg_a: double, arg_b: Expression<B>) -> _ = BinaryExpression<Constant<double>, B, " + cpp2::to_string(CPP2_UFCS_0(name, t)) + ">(Constant<double>(arg_a), arg_b);");
 }
 
 #line 1293 "reflect.h2"
