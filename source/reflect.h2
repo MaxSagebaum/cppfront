@@ -38,6 +38,7 @@ compiler_services: @polymorphic_base @copyable type =
     errors               : *std::vector<error_entry>;
     errors_original_size : int;
     generated_tokens     : *std::deque<token>;
+    generated_declarations: *std::vector<std::unique_ptr<declaration_node>>;
     parser               : cpp2::parser;
     metafunction_name    : std::string = ();
     metafunction_args    : std::vector<std::string> = ();
@@ -46,12 +47,14 @@ compiler_services: @polymorphic_base @copyable type =
     operator=: (
         out this,
         errors_          : *std::vector<error_entry>,
-        generated_tokens_: *std::deque<token>
+        generated_tokens_: *std::deque<token>,
+        generated_declarations_: *std::vector<std::unique_ptr<declaration_node>>
     )
     = {
         errors = errors_;
         errors_original_size = cpp2::unsafe_narrow<int>(std::ssize(errors*));
         generated_tokens = generated_tokens_;
+        generated_declarations = generated_declarations_;
         parser = errors*;
     }
 
@@ -73,11 +76,11 @@ compiler_services: @polymorphic_base @copyable type =
 
     arguments_were_used: (this) -> bool = metafunctions_used;
 
-    protected parse_statement: (
+    protected tokenize: (
         inout this,
         copy source: std::string_view
     )
-        -> std::unique_ptr<statement_node>
+        -> _
     = {
         generated_lines.push_back( std::vector<source_line>() );
         lines := generated_lines.back()&;
@@ -113,12 +116,45 @@ compiler_services: @polymorphic_base @copyable type =
 
         assert( std::ssize(tokens* .get_map()) == 1 );
 
+        return tokens;
+    }
+
+    protected parse_statement: (
+        inout this,
+        copy source: std::string_view
+    )
+        -> std::unique_ptr<statement_node>
+    = {
+        tokens := tokenize(source);
+
         //  Now parse this single declaration from
         //  the lexed tokens
-        return parser.parse_one_declaration(
+        return parser.parse_one_statement(
             tokens*.get_map().begin()*.second,
             generated_tokens*
         );
+    }
+
+    protected parse_and_add_declaration: (
+        inout this,
+        copy source: std::string_view
+    )
+        -> bool
+    = {
+        tokens := tokenize(source);
+
+        //  Now parse this single declaration from
+        //  the lexed tokens
+        decl := parser.parse_one_declaration(
+            tokens*.get_map().begin()*.second,
+            generated_tokens*
+        );
+
+        if decl {
+            generated_declarations*.push_back(decl);
+            return true;
+        }
+        return false;
     }
 
     position: (virtual this)
@@ -490,6 +526,13 @@ type_declaration: @copyable type =
         decl := parse_statement(source);
         if !decl || !n*.add_type_member(decl) {
             error( std::string("error attempting to add member:\n") + source );
+        }
+    }
+
+    add_declaration_to_parent_namespace: (inout this, source: std::string_view)
+    = {
+        if !parse_and_add_declaration(source) {
+            error( std::string("error attempting to add declaration:\n") + source );
         }
     }
 
@@ -1231,6 +1274,29 @@ print: (t: meta::type_declaration) =
     std::cout << t.print() << "\n";
 }
 
+//-----------------------------------------------------------------------
+//
+//  maker - add a make_<class name> function
+//
+maker: (inout t: meta::type_declaration) =
+{
+    t.add_declaration_to_parent_namespace("make_(t.name())$: (args...: _) -> _ = { return (t.name())$(args...); }");
+}
+
+//-----------------------------------------------------------------------
+//
+//  generate_expressions - adds expression syntax
+//
+generate_binary_expression: (inout t: meta::type_declaration) =
+{
+
+    op_name: std::string = t.name().substr(8); // Skip 'Operator'
+
+    t.add_declaration_to_parent_namespace("(op_name)$: <A, B> (arg_a: Expression<A>, arg_b: Expression<B>) -> _ = BinaryExpression<A, B, (t.name())$>(arg_a, arg_b);");
+    t.add_declaration_to_parent_namespace("(op_name)$: <A> (arg_a: Expression<A>, arg_b: double) -> _ = BinaryExpression<A, Constant<double>, (t.name())$>(arg_a, Constant<double>(arg_b));");
+    t.add_declaration_to_parent_namespace("(op_name)$: <B> (arg_a: double, arg_b: Expression<B>) -> _ = BinaryExpression<Constant<double>, B, (t.name())$>(Constant<double>(arg_a), arg_b);");
+}
+
 
 }
 
@@ -1355,6 +1421,12 @@ apply_metafunctions: (
         }
         else if name == "print" {
             print( rtype );
+        }
+        else if name == "maker" {
+            maker( rtype );
+        }
+        else if name == "generate_binary_expression" {
+            generate_binary_expression( rtype );
         }
         else {
             (metafunction := load_metafunction(name))
