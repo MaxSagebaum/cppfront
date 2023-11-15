@@ -38,17 +38,17 @@ class alias_declaration;
 #line 888 "reflect.h2"
 class value_member_info;
 
-#line 1301 "reflect.h2"
+#line 1278 "reflect.h2"
 }
 
 }
 
-#line 1336 "reflect.h2"
+#line 1313 "reflect.h2"
 namespace cpp2 {
 
 namespace meta {
 
-#line 1456 "reflect.h2"
+#line 1427 "reflect.h2"
 }
 
 }
@@ -737,21 +737,7 @@ auto cpp2_union(meta::type_declaration& t) -> void;
 //
 auto print(cpp2::in<meta::type_declaration> t) -> void;
 
-#line 1277 "reflect.h2"
-//-----------------------------------------------------------------------
-//
-//  maker - add a make_<class name> function
-//
-auto maker(meta::type_declaration& t) -> void;
-
-#line 1286 "reflect.h2"
-//-----------------------------------------------------------------------
-//
-//  generate_expressions - adds expression syntax
-//
-auto generate_binary_expression(meta::type_declaration& t) -> void;
-
-#line 1301 "reflect.h2"
+#line 1278 "reflect.h2"
 }
 
 }
@@ -791,7 +777,7 @@ namespace cpp2 {
 
 namespace meta {
 
-#line 1341 "reflect.h2"
+#line 1318 "reflect.h2"
 //-----------------------------------------------------------------------
 //
 //  apply_metafunctions
@@ -802,7 +788,7 @@ namespace meta {
     auto const& error
     ) -> bool;
 
-#line 1456 "reflect.h2"
+#line 1427 "reflect.h2"
 }
 
 }
@@ -1846,34 +1832,17 @@ auto print(cpp2::in<meta::type_declaration> t) -> void
     std::cout << CPP2_UFCS_0(print, t) << "\n";
 }
 
-#line 1281 "reflect.h2"
-auto maker(meta::type_declaration& t) -> void
-{
-    CPP2_UFCS(add_declaration_to_parent_namespace, t, "make_" + cpp2::to_string(CPP2_UFCS_0(name, t)) + ": (args...: _) -> _ = { return " + cpp2::to_string(CPP2_UFCS_0(name, t)) + "(args...); }");
-}
-
-#line 1290 "reflect.h2"
-auto generate_binary_expression(meta::type_declaration& t) -> void
-{
-
-    std::string op_name {CPP2_UFCS(substr, CPP2_UFCS_0(name, t), 8)}; // Skip 'Operator'
-
-    CPP2_UFCS(add_declaration_to_parent_namespace, t, cpp2::to_string(op_name) + ": <A, B> (arg_a: Expression<A>, arg_b: Expression<B>) -> _ = BinaryExpression<A, B, " + cpp2::to_string(CPP2_UFCS_0(name, t)) + ">(arg_a, arg_b);");
-    CPP2_UFCS(add_declaration_to_parent_namespace, t, cpp2::to_string(op_name) + ": <A> (arg_a: Expression<A>, arg_b: double) -> _ = BinaryExpression<A, Constant<double>, " + cpp2::to_string(CPP2_UFCS_0(name, t)) + ">(arg_a, Constant<double>(arg_b));");
-    CPP2_UFCS(add_declaration_to_parent_namespace, t, cpp2::to_string(std::move(op_name)) + ": <B> (arg_a: double, arg_b: Expression<B>) -> _ = BinaryExpression<Constant<double>, B, " + cpp2::to_string(CPP2_UFCS_0(name, t)) + ">(Constant<double>(arg_a), arg_b);");
-}
-
-#line 1301 "reflect.h2"
+#line 1278 "reflect.h2"
 }
 
 }
 
-#line 1336 "reflect.h2"
+#line 1313 "reflect.h2"
 namespace cpp2 {
 
 namespace meta {
 
-#line 1345 "reflect.h2"
+#line 1322 "reflect.h2"
 [[nodiscard]] auto apply_metafunctions(
     declaration_node& n, 
     type_declaration& rtype, 
@@ -1954,17 +1923,11 @@ namespace meta {
         else {if (name == "print") {
             print(rtype);
         }
-        else {if (name == "maker") {
-            maker(rtype);
-        }
-        else {if (name == "generate_binary_expression") {
-            generate_binary_expression(rtype);
-        }
         else {
 {
 auto const& metafunction = load_metafunction(name);
 
-#line 1433 "reflect.h2"
+#line 1404 "reflect.h2"
             if (metafunction) {
                 (*cpp2::assert_not_null(metafunction))(rtype);
             }else {
@@ -1973,8 +1936,8 @@ auto const& metafunction = load_metafunction(name);
                 return false; 
             }
 }
-#line 1440 "reflect.h2"
-        }}}}}}}}}}}}}}}}}
+#line 1411 "reflect.h2"
+        }}}}}}}}}}}}}}}
 
         if ((
             !(CPP2_UFCS_0(empty, args)) 
@@ -1989,7 +1952,7 @@ auto const& metafunction = load_metafunction(name);
     return true; 
 }
 
-#line 1456 "reflect.h2"
+#line 1427 "reflect.h2"
 }
 
 }
