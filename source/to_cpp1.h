@@ -145,6 +145,15 @@ static cmdline_processor::register_flag cmd_cpp1_libraries(
     [](std::string const& name) { flag_cpp1_libraries.push_back(name); }
 );
 
+static auto flag_metafunction_compile = std::string{};
+static cmdline_processor::register_flag cmd_metafunction_compile(
+    9,
+    "metafunction compile",
+    "compile command for metafunctions - each metafunction is compiled during cpp2 parsing",
+    nullptr,
+    [](std::string const& command) { flag_metafunction_compile = command; }
+    );
+
 static auto flag_print_colon_errors = false;
 static cmdline_processor::register_flag cmd_print_colon_errors(
     9,
@@ -675,6 +684,19 @@ public:
         return out;
     }
 
+    auto close()
+        -> void
+    {
+        assert(
+            is_open()
+            && "ICE: tried to call .close without first calling .open"
+            );
+        out_file.close();
+        out = {};
+        pcomments = {};
+        phase = phase0_type_decls;
+    }
+
 
     //-----------------------------------------------------------------------
     //  Abandon: close and delete
@@ -1142,7 +1164,7 @@ public:
         : sourcefile{ filename }
         , source    { errors }
         , tokens    { errors }
-        , parser    { errors }
+        , parser    { errors , std::bind(std::mem_fn(&cppfront::create_and_add_cpp1_library), this, std::placeholders::_1) }
         , sema      { errors }
     {
         //  "Constraints enable creativity in the right directions"
@@ -1208,6 +1230,141 @@ public:
         }
     }
 
+    //-----------------------------------------------------------------------
+    //  lower_to_cpp1
+    //
+    //  Creates a cpp2 metafunction library
+    //
+    auto create_and_add_cpp1_library(std::unique_ptr<declaration_node>& d)
+        -> bool
+    {
+
+        if(flag_metafunction_compile.empty()) {
+            return false; // Skip if no compile command is present.
+        }
+
+        std::string cpp1_filename = "tmp_metafunction_" + d->name()->to_string() + ".cpp";
+        std::string object_filename = "tmp_metafunction_" + d->name()->to_string() + ".o";
+        std::string library_filename = "tmp_metafunction_" + d->name()->to_string() + ".so";
+
+        printer.open(
+            sourcefile,
+            cpp1_filename,
+            {},
+            source,
+            parser
+            );
+        if (!printer.is_open()) {
+            errors.emplace_back(
+                source_position{},
+                "could not open output file " + cpp1_filename
+                );
+            return false;
+        }
+
+        //  Generate a reasonable macroized name
+        auto cpp1_FILENAME = to_upper_and_underbar(cpp1_filename);
+
+
+        //---------------------------------------------------------------------
+        //  Do lowered file prolog
+        //
+        //  Only emit extra lines if we actually have Cpp2, because
+        //  we want Cpp1-only files to pass through with zero changes
+        //  (unless the user requested import/include of std)
+
+        if (flag_use_source_location) {
+            printer.print_extra( "#define CPP2_USE_SOURCE_LOCATION Yes\n" );
+        }
+
+        if (flag_include_std) {
+            printer.print_extra( "#define CPP2_INCLUDE_STD         Yes\n" );
+        }
+        else if (flag_import_std) {
+            printer.print_extra( "#define CPP2_IMPORT_STD          Yes\n" );
+        }
+
+        if (flag_no_exceptions) {
+            printer.print_extra( "#define CPP2_NO_EXCEPTIONS       Yes\n" );
+        }
+
+        if (flag_no_rtti) {
+            printer.print_extra( "#define CPP2_NO_RTTI             Yes\n" );
+        }
+
+        //---------------------------------------------------------------------
+        //  Do phase0_type_decls
+        assert(printer.get_phase() == printer.phase0_type_decls);
+
+        printer.print_extra( "\n//=== Cpp2 type declarations ====================================================\n\n" );
+        printer.print_extra( "\n#include \"cpp2util.h\"\n" );
+        printer.print_extra( "#include \"cpp2reflect.h\"\n\n" );
+
+        assert(d);
+        emit(*d);
+
+        //---------------------------------------------------------------------
+        //  Do phase1_type_defs_func_decls
+        //
+        printer.finalize_phase();
+        printer.next_phase();
+
+        printer.print_extra( "\n//=== Cpp2 type definitions and function declarations ===========================\n\n" );
+
+        assert (printer.get_phase() == positional_printer::phase1_type_defs_func_decls);
+        assert(d);
+        emit(*d);
+
+        //  If there is Cpp2 code, we have more to do...
+
+        //---------------------------------------------------------------------
+        //  Do phase2_func_defs
+        //
+        printer.finalize_phase();
+        printer.next_phase();
+
+        printer.print_extra( "\n//=== Cpp2 function definitions =================================================\n\n" );
+
+        assert(d);
+        emit(*d);
+
+        printer.finalize_phase( true );
+        printer.close();
+
+        //---------------------------------------------------------------------
+        //  Now compile and link the source file
+        std::string compile_command = flag_metafunction_compile +
+                                     " -Dmetafunctions_EXPORTS "
+                                     " -fPIC"
+                                     " -o " + object_filename +
+                                     " -c "
+                                     " " + cpp1_filename;
+        std::string link_command = flag_metafunction_compile +
+                                  " -fPIC"
+                                  " -shared"
+                                  " -Wl,-soname," + library_filename +
+                                  " -o " + library_filename +
+                                  " " + object_filename;
+
+        if(std::system(compile_command.c_str())) {
+            errors.emplace_back(
+                source_position{},
+                "Could not compile metafunction: " + compile_command
+                );
+            return false;
+        }
+        if(std::system(link_command.c_str())) {
+            errors.emplace_back(
+                source_position{},
+                "Could not link metafunction: " + link_command
+                );
+            return false;
+        }
+
+        cpp1_libraries.emplace_back(library_filename);
+
+        return true;
+    }
 
     //-----------------------------------------------------------------------
     //  lower_to_cpp1

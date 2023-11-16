@@ -48,14 +48,15 @@ compiler_services: @polymorphic_base @copyable type =
         out this,
         errors_          : *std::vector<error_entry>,
         generated_tokens_: *std::deque<token>,
-        generated_declarations_: *std::vector<std::unique_ptr<declaration_node>>
+        generated_declarations_: *std::vector<std::unique_ptr<declaration_node>>,
+        meta_create: *cpp2::meta_create_func
     )
     = {
         errors = errors_;
         errors_original_size = cpp2::unsafe_narrow<int>(std::ssize(errors*));
         generated_tokens = generated_tokens_;
         generated_declarations = generated_declarations_;
-        parser = errors*;
+        parser = (errors*, meta_create*);
     }
 
     set_metafunction_name: (inout this, name: std::string_view, args: std::vector<std::string>) = {
