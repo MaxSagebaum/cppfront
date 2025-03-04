@@ -1977,9 +1977,21 @@ autodiff_impl: type = {
 
     public diff : std::string = "";
 
-    genTemporary : (inout this) -> std::string = {
+    gen_temporary : (inout this) -> std::string = {
         temporary_count += 1;
         return "temp_(temporary_count)$";
+    }
+
+    handle_expression_term :(inout this, inout mf, term) -> std::string = {
+        if term.is_identifier() {
+            return term.to_string();
+        }
+        else {
+            t := gen_temporary();
+            std::cout << "Handle generation for: (term.to_string())$" << std::endl;
+            //handle_expression_terms(mf, t, term..get_expression_list());
+            return t;
+        }
     }
 
     handle_expression_terms :(inout this, inout mf, lhs: std::string, terms) = {
@@ -2197,10 +2209,7 @@ autodiff_impl: type = {
                     primal += " (op)$ ";
                 }
 
-                var := term.get_term().to_string();
-                if !mf.has_parameter_or_return_named(var) {
-                    mf.error( "temporary alpha limitation: the argument '(var)$' must be a parameter or return name");
-                }
+                var := handle_expression_term(mf, term.get_term());
                 fwd    += "(var)$_d";
                 primal += "(var)$";
 
@@ -2235,17 +2244,11 @@ autodiff_impl: type = {
 
         if multiplicative_terms.ssize() > 1
         {
-            arg_a := multiplicative_terms[0].get_term().to_string();
-            if !mf.has_parameter_or_return_named(arg_a) {
-                mf.error( "temporary alpha limitation: the argument '(arg_a)$' must be a parameter or return name");
-            }
+            arg_a := handle_expression_term(mf, multiplicative_terms[0].get_term());
 
             i : int = 1;
             while i < multiplicative_terms.ssize() next i += 1 {
-                arg_b := multiplicative_terms[i].get_term().to_string();
-                if !mf.has_parameter_or_return_named(arg_b) {
-                    mf.error( "temporary alpha limitation: the addition's right-hand side '(arg_b)$' must be a parameter or return name");
-                }
+                arg_b := handle_expression_term(mf, multiplicative_terms[i].get_term());
 
                 op := multiplicative_terms[i].get_op().to_string();
 
@@ -2272,7 +2275,7 @@ autodiff_impl: type = {
                 }
                 else {
                     // Temporary
-                    t := genTemporary();
+                    t := gen_temporary();
                     // TODO: Get type of expression, in order to define the type of t.
                     diff += "(t)$_d := (fwd)$;";
                     diff += "(t)$   := (primal)$;";
