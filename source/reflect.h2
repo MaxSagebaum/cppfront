@@ -2251,7 +2251,7 @@ autodiff: (inout t: meta::type_declaration) =
 
                             var := term.get_term().to_string();
                             if !mf.has_parameter_or_return_named(var) {
-                                m.error( "temporary alpha limitation: the addition's left-hand side '(var)$' must be a parameter or return name");
+                                m.error( "temporary alpha limitation: the argument '(var)$' must be a parameter or return name");
                             }
                             line1 += "(var)$_d";
                             line2 += "(var)$";
@@ -2287,32 +2287,56 @@ autodiff: (inout t: meta::type_declaration) =
 
                     if multiplicative_terms.ssize() > 1
                     {
-                        if multiplicative_terms.ssize() != 2
-                        {
-                            m.error( "temporary alpha limitation: does not support chains of * and /");
-                        }
+
+                        tempCount : int = 0;
+                        genTemporary := :() -> std::string = {
+                          tempCount&$* += 1;
+                          return "temp_(tempCount&$*)$";
+                        };
 
                         lhs := multiplicative_terms[0].get_term().to_string();
                         if !mf.has_parameter_or_return_named(lhs) {
-                            m.error( "temporary alpha limitation: the addition's left-hand side '(lhs)$' must be a parameter or return name");
+                            m.error( "temporary alpha limitation: the argument '(lhs)$' must be a parameter or return name");
                         }
 
-                        rhs := multiplicative_terms[1].get_term().to_string();
-                        if !mf.has_parameter_or_return_named(rhs) {
-                            m.error( "temporary alpha limitation: the addition's right-hand side '(rhs)$' must be a parameter or return name");
-                        }
+                        i : int = 1;
+                        while i < multiplicative_terms.ssize() next i += 1 {
+                            rhs := multiplicative_terms[i].get_term().to_string();
+                            if !mf.has_parameter_or_return_named(rhs) {
+                                m.error( "temporary alpha limitation: the addition's right-hand side '(rhs)$' must be a parameter or return name");
+                            }
 
-                        op := multiplicative_terms[1].get_op().to_string();
-                        if "*" == op {
-                            line1 += "(lhs)$ * (rhs)$_d + (rhs)$ * (lhs)$_d;";
-                            line2 += "(lhs)$ * (rhs)$;";
-                        }
-                        else if "/" == op {
-                            line1 += "(lhs)$_d / (rhs)$ - (lhs)$ * (rhs)$_d / ((rhs)$ * (rhs)$);";
-                            line2 += "(lhs)$ / (rhs)$;";
-                        }
-                        else {
-                            m.error( "unkown multiplicative operator '(op)$'");
+                            op := multiplicative_terms[i].get_op().to_string();
+
+                            fwd    : std::string = "";
+                            primal : std::string = "";
+
+                            if "*" == op {
+                                fwd    = "(lhs)$ * (rhs)$_d + (rhs)$ * (lhs)$_d";
+                                primal = "(lhs)$ * (rhs)$";
+                            }
+                            else if "/" == op {
+                                fwd    = "(lhs)$_d / (rhs)$ - (lhs)$ * (rhs)$_d / ((rhs)$ * (rhs)$)";
+                                primal = "(lhs)$ / (rhs)$";
+                            }
+                            else {
+                                m.error( "unkown multiplicative operator '(op)$'");
+                            }
+
+                            if i + 1 == multiplicative_terms.ssize() {
+                                // Last item
+                                line1 += fwd + ";";
+                                line2 += primal + ";";
+                            }
+                            else {
+                                // Temporary
+                                t := genTemporary();
+                                // TODO: Get type of expression, in order to define the type of t.
+                                diff += "(t)$_d = (fwd)$;";
+                                diff += "(t)$   = (primal)$;";
+
+                                lhs = t;
+                            }
                         }
 
                         diff += line1 + line2;
