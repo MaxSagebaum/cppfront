@@ -668,6 +668,7 @@ binary_expression: @copy_constructible <Name: String, Term> type =
     is_id_expression        : (this) -> bool = this.n*.is_id_expression        ();
     is_unqualified_id       : (this) -> bool = this.n*.is_unqualified_id       ();
     is_expression_list      : (this) -> bool = this.n*.is_expression_list      ();
+    // is_expression           : (this) -> bool = this.n*.is_expression           ();
     is_literal              : (this) -> bool = this.n*.is_literal              ();
 
     term_t: @copyable <T> type = {
@@ -755,8 +756,9 @@ binary_expression: @copy_constructible <Name: String, Term> type =
         }
     }
 
-    as_expression_list: (this) -> expression_list = (this.n*.get_expression_list(), this);
-    as_literal        : (this) -> std::string     = this.n*.get_literal()*.to_string();
+    as_expression_list: (this) -> expression_list   = (this.n*.get_expression_list(), this);
+    as_expression     : (this) -> binary_expression = this;
+    as_literal        : (this) -> std::string       = this.n*.get_literal()*.to_string();
 
     //  Get the postfix-expression, if that's the entire expression (not actually binary)
     get_if_only_a_postfix_expression: (this) -> postfix_expression = (this.n*.get_if_only_a_postfix_expression_node(), this);
@@ -1226,10 +1228,12 @@ is_as_expression: @polymorphic_base @copy_constructible type =
     is_id_expression  : (this) -> bool = this.n*.is_id_expression  ();
     is_unqualified_id : (this) -> bool = this.n*.is_unqualified_id ();
     is_expression_list: (this) -> bool = this.n*.is_expression_list();
+    is_expression     : (this) -> bool = true; // TODO: Implement this in n: this.n*.is_expression     ();
     is_literal        : (this) -> bool = this.n*.is_literal        ();
                       
-    as_expression_list: (this) -> expression_list = (this.n*.get_expression_list(), this);
-    as_literal        : (this) -> std::string     = n*.get_literal()*.to_string();
+    as_expression_list: (this) -> expression_list  = (this.n*.get_expression_list(), this);
+    as_expression     : (this) -> is_as_expression = this;
+    as_literal        : (this) -> std::string      = n*.get_literal()*.to_string();
                       
     get_identifier    : (this) -> std::string_view = { 
         ptok := this.n*.get_identifier();
@@ -3773,6 +3777,16 @@ autodiff_expression_handler: type = {
             t := ctx*.gen_temporary();
             ad : autodiff_expression_handler = (ctx, t, ":"); // TODO: get type of expression
             ad..pre_traverse(bin_expr.get_terms().front().get_term());
+            append(ad);
+
+            return t;
+        }
+        else if term is binary_expression {
+            expr := term;
+
+            t := ctx*.gen_temporary();
+            ad : autodiff_expression_handler = (ctx, t, ":"); // TODO: get type of expression
+            ad..pre_traverse(expr);
             append(ad);
 
             return t;
